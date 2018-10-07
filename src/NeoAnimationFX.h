@@ -36,7 +36,7 @@
 #define ORANGE     0xFF3000
 #define ULTRAWHITE 0xFFFFFFFF
 
-#define MODE_COUNT 59
+#define MODE_COUNT 60
 
 #define FX_MODE_STATIC                   0
 #define FX_MODE_BLINK                    1
@@ -97,6 +97,7 @@
 #define FX_MODE_CUSTOM                  56
 #define FX_MODE_METEOR_RAIN             57
 #define FX_MODE_RUNNING_GREEN_BLUE      58
+#define FX_MODE_CYCLON_BOUNCE                  59
 
 #define NO_OPTIONS   (uint8_t)0x00
 #define REVERSE      (uint8_t)0x80
@@ -256,20 +257,24 @@ template<typename T_PIXEL_METHOD> class NeoAnimationFX {
       _mode[FX_MODE_BICOLOR_CHASE]           = &NeoAnimationFX::mode_bicolor_chase;
       _mode[FX_MODE_TRICOLOR_CHASE]          = &NeoAnimationFX::mode_tricolor_chase;
       _mode[FX_MODE_RUNNING_GREEN_BLUE]      = &NeoAnimationFX::mode_running_green_blue;
-// if flash memory is constrained (I'm looking at you Arduino Nano), replace modes
-// that use a lot of flash with mode_static (reduces flash footprint by about 3600 bytes)
-#ifdef REDUCED_MODES
+      _mode[FX_MODE_CYCLON_BOUNCE]           = &NeoAnimationFX::mode_cyclon_bounce;
+      
+      // if flash memory is constrained (I'm looking at you Arduino Nano), replace modes
+      // that use a lot of flash with mode_static (reduces flash footprint by about 3600 bytes)
+      #ifdef REDUCED_MODES
       _mode[FX_MODE_BREATH]                  = &NeoAnimationFX::mode_static;
       _mode[FX_MODE_RUNNING_LIGHTS]          = &NeoAnimationFX::mode_static;
       _mode[FX_MODE_ICU]                     = &NeoAnimationFX::mode_static;
-#else
+      #else
       _mode[FX_MODE_BREATH]                  = &NeoAnimationFX::mode_breath;
       _mode[FX_MODE_RUNNING_LIGHTS]          = &NeoAnimationFX::mode_running_lights;
       _mode[FX_MODE_ICU]                     = &NeoAnimationFX::mode_icu;
-#endif
+      #endif
+      
       _mode[FX_MODE_CUSTOM]                  = &NeoAnimationFX::mode_custom;
       _mode[FX_MODE_METEOR_RAIN]             = &NeoAnimationFX::mode_meteor_rain;
-
+      
+      // name
       _name[FX_MODE_STATIC]                    = F("Static");
       _name[FX_MODE_BLINK]                     = F("Blink");
       _name[FX_MODE_BREATH]                    = F("Breath");
@@ -329,6 +334,7 @@ template<typename T_PIXEL_METHOD> class NeoAnimationFX {
       _name[FX_MODE_CUSTOM]                    = F("Custom");
 	    _name[FX_MODE_METEOR_RAIN]               = F("Meteor Rain");
       _name[FX_MODE_RUNNING_GREEN_BLUE]        = F("Running Green Blue");
+      _name[FX_MODE_CYCLON_BOUNCE]             = F("Cyclon Bounce");
 
       _brightness = DEFAULT_BRIGHTNESS;
 	  _running = false;
@@ -490,6 +496,34 @@ template<typename T_PIXEL_METHOD> class NeoAnimationFX {
       pixel_rgb_color = colorGamma.Correct(pixel_rgb_color);
     }
 	_strip.SetPixelColor(pixel, pixel_rgb_color);
+  }
+  
+  /*
+  * Sets all pixel to a given color
+  */
+  void setAll(uint8_t r, uint8_t g, uint8_t b) {
+    RgbColor color_tmp(r, g, b);
+    for(uint16_t i=SEGMENT.start; i <= SEGMENT.stop; i++) {
+      
+      if(IS_GAMMA) {
+        color_tmp = colorGamma.Correct(color_tmp);
+      }
+      _strip.SetPixelColor(i, color_tmp);
+    }
+  }
+  
+  void setAll(uint32_t color) {
+    for(uint16_t i=SEGMENT.start; i <= SEGMENT.stop; i++) {
+        setPixelColor(i, color);
+      }
+  }
+  
+  
+  void setAll(uint16_t pixel, uint32_t c) {
+    RgbColor color_tmp = (RgbColor) HtmlColor((uint32_t) c);
+    for(uint16_t i=SEGMENT.start; i <= SEGMENT.stop; i++) {
+        setPixelColor(i, color_tmp);
+      }
   }
   
   uint8_t getMode(void) {
@@ -686,7 +720,7 @@ template<typename T_PIXEL_METHOD> class NeoAnimationFX {
 	RgbColor newColor(r, g, b);    
     setPixelColor(ledNo, newColor);
   }
-
+  
   /*
   * Fades all pixel to Black (use absolute value)
   */
@@ -1700,9 +1734,9 @@ template<typename T_PIXEL_METHOD> class NeoAnimationFX {
   uint16_t meteorRain(uint8_t meteorTrailDecay, boolean meteorRandomDecay) {  
     uint16_t meteorSize = SEGMENT_LENGTH * 0.15;
 	
-	if(SEGMENT_RUNTIME.counter_mode_step == 0){
-      _strip.ClearTo(rgbcolor_black);
-	}
+  	if(SEGMENT_RUNTIME.counter_mode_step == 0){
+        _strip.ClearTo(rgbcolor_black);
+  	}
   
     if( SEGMENT_RUNTIME.counter_mode_step <= SEGMENT_LENGTH*2 ) {
       // fade brightness all LEDs one step
@@ -1730,6 +1764,44 @@ template<typename T_PIXEL_METHOD> class NeoAnimationFX {
   uint16_t mode_meteor_rain(void) {
     return meteorRain(64, true);
   }
+  
+  uint16_t cyclon_bounce(RgbColor color, uint8_t EyeSize, uint8_t SpeedDelay, uint8_t ReturnDelay) {
+    for(uint8_t i = 0; i < SEGMENT_LENGTH - EyeSize - 2; i++) {
+      setAll(0,0,0);
+      setPixelColor(i, color.R/10, color.G/10, color.B/10);
+      for(uint8_t j = 1; j <= EyeSize; j++) {
+        setPixelColor(i+j, color.R, color.G, color.B); 
+      }
+      setPixelColor(i+EyeSize+1, color.R/10, color.G/10, color.B/10);
+      _strip.Show();
+      delay(SpeedDelay);
+    }
+
+    delay(ReturnDelay);
+
+    for(uint8_t i = SEGMENT_LENGTH - EyeSize - 2; i > 0; i--) {
+      setAll(0,0,0);
+      setPixelColor(i, color.R/10, color.G/10, color.B/10);
+      for(uint8_t j = 1; j <= EyeSize; j++) {
+        setPixelColor(i+j, color.R, color.G, color.B); 
+      }
+      setPixelColor(i+EyeSize+1, color.R/10, color.G/10, color.B/10);
+      _strip.Show();
+      delay(SpeedDelay);
+    }
+    
+    delay(ReturnDelay);
+    
+    // don't know why I most other mode functions return this
+    //return (SEGMENT.speed / SEGMENT_LENGTH);
+    return (SEGMENT.speed);
+  }
+  
+  uint16_t mode_cyclon_bounce (void) {
+    RgbColor color_tmp(255, 100, 10);
+    return cyclon_bounce(color_tmp, 4, 10, 50);
+  }
+  
   
   //////////// End of Effects ////////////
   
