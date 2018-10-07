@@ -36,7 +36,7 @@
 #define ORANGE     0xFF3000
 #define ULTRAWHITE 0xFFFFFFFF
 
-#define MODE_COUNT 58
+#define MODE_COUNT 59
 
 #define FX_MODE_STATIC                   0
 #define FX_MODE_BLINK                    1
@@ -96,6 +96,7 @@
 #define FX_MODE_ICU                     55
 #define FX_MODE_CUSTOM                  56
 #define FX_MODE_METEOR_RAIN             57
+#define FX_MODE_RUNNING_GREEN_BLUE      58
 
 #define NO_OPTIONS   (uint8_t)0x00
 #define REVERSE      (uint8_t)0x80
@@ -202,7 +203,7 @@ template<typename T_PIXEL_METHOD> class NeoAnimationFX {
   NeoAnimationFX(T_PIXEL_METHOD& pixelStrip) :
     _strip(pixelStrip) {
       _mode[FX_MODE_STATIC]                  = &NeoAnimationFX::mode_static;
-	  _mode[FX_MODE_BLINK]                   = &NeoAnimationFX::mode_blink;
+	    _mode[FX_MODE_BLINK]                   = &NeoAnimationFX::mode_blink;
       _mode[FX_MODE_COLOR_WIPE]              = &NeoAnimationFX::mode_color_wipe;
       _mode[FX_MODE_COLOR_WIPE_INV]          = &NeoAnimationFX::mode_color_wipe_inv;
       _mode[FX_MODE_COLOR_WIPE_REV]          = &NeoAnimationFX::mode_color_wipe_rev;
@@ -254,6 +255,7 @@ template<typename T_PIXEL_METHOD> class NeoAnimationFX {
       _mode[FX_MODE_CIRCUS_COMBUSTUS]        = &NeoAnimationFX::mode_circus_combustus;
       _mode[FX_MODE_BICOLOR_CHASE]           = &NeoAnimationFX::mode_bicolor_chase;
       _mode[FX_MODE_TRICOLOR_CHASE]          = &NeoAnimationFX::mode_tricolor_chase;
+      _mode[FX_MODE_RUNNING_GREEN_BLUE]      = &NeoAnimationFX::mode_running_green_blue;
 // if flash memory is constrained (I'm looking at you Arduino Nano), replace modes
 // that use a lot of flash with mode_static (reduces flash footprint by about 3600 bytes)
 #ifdef REDUCED_MODES
@@ -325,7 +327,8 @@ template<typename T_PIXEL_METHOD> class NeoAnimationFX {
       _name[FX_MODE_TRICOLOR_CHASE]            = F("Tricolor Chase");
       _name[FX_MODE_ICU]                       = F("ICU");
       _name[FX_MODE_CUSTOM]                    = F("Custom");
-	  _name[FX_MODE_METEOR_RAIN]               = F("Meteor Rain");
+	    _name[FX_MODE_METEOR_RAIN]               = F("Meteor Rain");
+      _name[FX_MODE_RUNNING_GREEN_BLUE]        = F("Running Green Blue");
 
       _brightness = DEFAULT_BRIGHTNESS;
 	  _running = false;
@@ -1420,6 +1423,13 @@ template<typename T_PIXEL_METHOD> class NeoAnimationFX {
   */
   uint16_t mode_running_red_blue(void) {
     return running((RgbColor) HtmlColor(RED), (RgbColor) HtmlColor(BLUE));
+  }
+  
+  /*
+  * Alternating green/blue pixels running.
+  */
+  uint16_t mode_running_green_blue(void) {
+    return running((RgbColor) HtmlColor(GREEN), (RgbColor) HtmlColor(BLUE));
   }
 
   /*
